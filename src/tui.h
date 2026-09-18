@@ -5,8 +5,12 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "vector.h"
+
 #define ESC "\x1B"
 // stdin = 0, stdout = 1, stderr = 2
+
+extern Vector back_buf;
 
 typedef struct {
   int width, height;

@@ -4,8 +4,8 @@ App app;
 struct termios start;
 struct termios tty;
 
-const char ***front_buf;
-const char ***back_buf; // Stupid triple pointer.
+static Vector front_buf = {.elem_size = sizeof(const char *)};
+Vector back_buf = {.elem_size = sizeof(const char *)};
 
 void init_terminal() {
 
@@ -25,31 +25,28 @@ void init_terminal() {
   app = (App){.isRunning = 1,
               .viewport = {.width = size.ws_col, .height = size.ws_row}};
 
-  // Create pointers to each row.
-  front_buf =
-      malloc(app.viewport.width * app.viewport.height * sizeof(*front_buf));
-  back_buf =
-      malloc(app.viewport.width * app.viewport.height * sizeof(*back_buf));
+  vector_resize(&front_buf, app.viewport.width, app.viewport.height);
+  vector_resize(&back_buf, app.viewport.width, app.viewport.height);
 
-  // Create the columns in the rows.
-  for (int y = 0; y < app.viewport.height; y++) {
-    front_buf[y] = malloc(app.viewport.width * sizeof(*front_buf[y]));
-    back_buf[y] = malloc(app.viewport.width * sizeof(*back_buf[y]));
-  }
+  const char **front = front_buf.data;
+  const char **back = back_buf.data;
 
   for (int y = 0; y < app.viewport.height; y++) {
     for (int x = 0; x < app.viewport.width; x++) {
-      back_buf[y][x] = " ";
-      front_buf[y][x] = " ";
+      front[y * app.viewport.width + x] = " ";
+      back[y * app.viewport.width + x] = " ";
     }
   }
 }
 
 void swap_buffer() {
+  const char **front = front_buf.data;
+  const char **back = back_buf.data;
+
   for (int y = 0; y < app.viewport.height; y++) {
     for (int x = 0; x < app.viewport.width; x++) {
-      front_buf[y][x] = back_buf[y][x];
-      back_buf[y][x] = " ";
+      front[y * app.viewport.width + x] = back[y * app.viewport.width + x];
+      back[y * app.viewport.width + x] = " ";
     }
   }
 }
@@ -74,41 +71,40 @@ void clear_screen() {
 }
 
 void restore_terminal() {
-  for (int y = 0; y < app.viewport.height; y++) {
-    free(front_buf[y]);
-    free(back_buf[y]);
-  }
-  free(front_buf);
-  free(back_buf);
-
   const char restore[] = ESC "[?7h" ESC "[?25h" ESC "[?1049l";
   write(1, restore, sizeof(restore));
+
   tcsetattr(0, TCSAFLUSH, &start); // stdin
+
+  vector_free(&front_buf);
+  vector_free(&back_buf);
 }
 
 void draw_rect(Rect rect) {
   static const char *SOLID_BORDERS[6] = {"─", "│", "┌", "┐", "└", "┘"};
+  const char **back = back_buf.data;
 
   for (int y = rect.y; y < rect.height; y++) {
     for (int x = rect.x; x < rect.width; x++) {
       if (y == rect.y || y == rect.y + rect.height - 1)
-        back_buf[y][x] = SOLID_BORDERS[0];
+        back[y * back_buf.width + x] = SOLID_BORDERS[0];
       if (x == rect.x || x == rect.x + rect.width - 1)
-        back_buf[y][x] = SOLID_BORDERS[1];
+        back[y * back_buf.width + x] = SOLID_BORDERS[1];
       if (x == rect.x && y == rect.y)
-        back_buf[y][x] = SOLID_BORDERS[2];
+        back[y * back_buf.width + x] = SOLID_BORDERS[2];
       if (x == rect.x + rect.width - 1 && y == rect.y)
-        back_buf[y][x] = SOLID_BORDERS[3];
+        back[y * back_buf.width + x] = SOLID_BORDERS[3];
       if (x == rect.x && y == rect.y + rect.height - 1)
-        back_buf[y][x] = SOLID_BORDERS[4];
+        back[y * back_buf.width + x] = SOLID_BORDERS[4];
       if (x == rect.x + rect.width - 1 && y == rect.y + rect.height - 1)
-        back_buf[y][x] = SOLID_BORDERS[5];
+        back[y * back_buf.width + x] = SOLID_BORDERS[5];
     }
   }
 }
 
 void draw_screen() {
   write(1, "\x1b[H", 3);
+  const char **front = front_buf.data;
 
   for (int y = 0; y < app.viewport.height; y++) {
     char pos[32];
@@ -117,7 +113,8 @@ void draw_screen() {
     write(1, pos, len);
 
     for (int x = 0; x < app.viewport.width; x++) {
-      write(1, front_buf[y][x], strlen(front_buf[y][x]));
+      const char *cell = front[y * front_buf.width + x];
+      write(1, cell, strlen(cell));
     }
   }
 }
