@@ -26,6 +26,10 @@ vec3 translation(vec3 p, vec3 translate) {
   };
 }
 
+// TODO : How can I mathematically draw a line between the points and set a
+// light value of 0.5f to them? (0.5f light value to distinguish between the
+// points and the lines)
+
 void render(int width, int height) {
   vector_resize(&render_buf, width, height);
   float *buf = render_buf.data;

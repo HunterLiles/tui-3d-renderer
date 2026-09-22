@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 #include "vector.h"
 
 // This 3D renderer is made from

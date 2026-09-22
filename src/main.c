@@ -9,7 +9,7 @@ int main() {
                .width = app.viewport.width,
                .height = app.viewport.height};
 
-  clear_screen();
+  clear_screen(); // Clear once outside so the screen doesn't flicker
   while (app.isRunning) {
 
     render(app.viewport.width, app.viewport.height);

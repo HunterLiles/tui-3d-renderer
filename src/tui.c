@@ -1,5 +1,11 @@
 #include "tui.h"
 
+#include <stdio.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
+
 App app;
 struct termios start;
 struct termios tty;
